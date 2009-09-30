@@ -1,0 +1,10 @@
+Package: opkg.py
+Priority: optional
+Section: system
+Source: http://devnull.networld.to/git/gitweb.cgi?p=proggs.git;a=tree;f=opkg;h=8c86aade1d21241a19d179d20b9e70b343cdc1c4;hb=master
+Version: 0.02
+Depends: python-sqlite3, python-xml, python-subprocess
+Architecture: armv4t
+Maintainer: Alex Oberhauser <oberhauseralex@networld.to>
+Description: Implementation of www.opkg.org API
+ .
