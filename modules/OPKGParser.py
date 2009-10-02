@@ -19,6 +19,7 @@
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 import sqlite3
 from xml.parsers import expat
+import Config
 
 class OPKGParser:
     def __init__(self, short, save):
@@ -28,6 +29,9 @@ class OPKGParser:
         self._parser.StartElementHandler = self.start
         self._parser.EndElementHandler = self.end
         self._save = save
+        config = Config.Config()
+        self._dbfile = config.getDbfile()
+        self._pkgtable = config.getPkgtable()
 
         self._entry = self.getEmptyEntry()
 
@@ -90,10 +94,10 @@ class OPKGParser:
         return self._entry
 
     def saveEntry(self, entry):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         conn.text_factory = str
         curs = conn.cursor()
-        query = 'INSERT INTO packages VALUES ( '
+        query = 'INSERT INTO ' + self._pkgtable + ' VALUES ( '
         query += entry['id'] + ', '
         query += '"' + entry['name'] + '", '
         if entry['homepage'] is not None:
@@ -140,13 +144,13 @@ class OPKGParser:
         curs.close()
 
     def createEmptyDatabase(self):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         curs = conn.cursor()
         try:
-            curs.execute('DROP TABLE packages')
+            curs.execute('DROP TABLE ' + self._pkgtable)
         except sqlite3.OperationalError:
             pass
-        curs.execute('CREATE TABLE packages (id INTEGER, name VARCHAR, homepage VARCHAR, \
+        curs.execute('CREATE TABLE ' + self._pkgtable + ' (id INTEGER, name VARCHAR, homepage VARCHAR, \
 developer VARCHAR, dependency VARCHAR, source VARCHAR, description_short VARCHAR, \
 packagelink VARCHAR, category VARCHAR, version VARCHAR)')
         conn.commit()

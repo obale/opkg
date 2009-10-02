@@ -25,6 +25,7 @@ import sqlite3
 from optparse import OptionParser
 from modules import OPKG
 from modules import OPKGUpgrade
+from modules import Config
 
 def sigint(signum, frame):
     print "Thank you for using this piece of software"
@@ -39,24 +40,27 @@ if __name__ == "__main__":
     parser.add_option("-u", "--update", action="store_true", dest="update", help="update the local database")
     parser.add_option("-U", "--upgrade", action="store_true", dest="upgrade", help="update the local database")
     parser.add_option("-i", "--install", action="store_true", dest="install", help="install the package")
+    parser.add_option("-r", "--remove", action="store_true", dest="remove", help="remove the package")
 
     (options, args) = parser.parse_args()
 
+    config = Config.Config()
+    dbfile = config.getDbfile()
     opkg = OPKG.OPKG()
     opkgupgrade = OPKGUpgrade.OPKGUpgrade()
-    if not os.path.isfile('opkg.db') and not options.update:
+    if not os.path.isfile(dbfile) and not options.update:
         print "No database found! Please wait until the update process if finished..."
         opkg.savePackages()
-        assert os.path.isfile('opkg.db')
+        assert os.path.isfile(dbfile)
 
     if options.update:
         opkg.savePackages()
     elif options.upgrade:
         opkgupgrade.upgrade()
     if options.number is not None:
-        opkg.getPackageByNumber(options.number, options.install)
+        opkg.getPackageByNumber(options.number, options.install, options.remove)
     elif options.searchterm is not None:
-        opkg.getPackageBySearchterm(options.searchterm, options.install)
+        opkg.getPackageBySearchterm(options.searchterm, options.install, options.remove)
     elif options.all:
         opkg.getAllPackages()
         if options.install:

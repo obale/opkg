@@ -20,27 +20,37 @@
 import sys
 import sqlite3
 from subprocess import call
+import Config
 import OPKGXml
 import OPKGParser
 import OPKGUpgrade
+import OPKGDelete
 
 class OPKG:
     def __init__(self):
         self._opkgxml = OPKGXml.OPKGXml()
         self._opkgupgrade = OPKGUpgrade.OPKGUpgrade()
+        self._opkgdelete = OPKGDelete.OPKGDelete()
         self._color = True
         self._nocolor = not self._color
         self._save = True
         self._nosave = not self._save
         self._installstr = ""
         self._installnames = ""
+        self._removenames = ""
         self._id = []
         self._name = []
         self._version = []
+        config = Config.Config()
+        self._dbfile = config.getDbfile()
+        self._pkgtable = config.getPkgtable()
 
     def install(self, name, packagelink):
         self._installstr += packagelink + " "
         self._installnames += name + " "
+
+    def remove(self, name):
+        self._removenames += name + " "
 
     def startInstallation(self, id, name, version):
         if self._installstr != "":
@@ -61,43 +71,69 @@ class OPKG:
         else:
             print "No package found to install!"
 
-    def getPackageByNumber(self, number, install):
-        conn = sqlite3.connect('opkg.db')
+    def startRemove(self, id, name, version):
+        if self._removenames != "":
+            print self._removenames
+            answer = 'N'
+            print 'Do you want to remove the package(s) above (y/N): ',
+            answer = sys.stdin.read(1)
+            if answer == 'y' or answer == 'Y':
+                retvalue = call(['opkg', 'remove', self._removenames])
+                # Deinstallation is finished successfully!
+                if retvalue == 0:
+                    self._opkgdelete.deletePackage(id)
+                    print '\033[1;32mDeinstallation successfully\033[0m'
+                else:
+                    print '\033[1;31mDeinstallation failed\033[0m'
+            else:
+                print "Aborted!"
+        else:
+            print "No package found to install!"
+
+    def getPackageByNumber(self, number, install, remove):
+        conn = sqlite3.connect(self._dbfile)
         conn.text_factory = str
         curs = conn.cursor()
         curs.execute('SELECT id, name, homepage, developer, dependency, source,\
-                description_short, packagelink, category, version FROM packages WHERE id=' + str(number))
+                description_short, packagelink, category, version FROM  ' + \
+                self._pkgtable + ' WHERE id=' + str(number))
         for row in curs.fetchall():
             if install:
                 self.install(row[1], row[7])
+            elif remove:
+                self.remove(row[1])
             else: self.printPackage(self._color, row)
         conn.commit()
         curs.close()
         if install: self.startInstallation(row[0], row[1], row[9])
+        elif remove: self.startRemove(row[0], row[1], row[9])
 
-    def getPackageBySearchterm(self, searchterm, install):
-        conn = sqlite3.connect('opkg.db')
+    def getPackageBySearchterm(self, searchterm, install, remove):
+        conn = sqlite3.connect(self._dbfile)
         conn.text_factory = str
         curs = conn.cursor()
         curs.execute('SELECT id, name, homepage, developer, dependency, source,\
-                description_short, packagelink, category, version FROM \
-                packages WHERE name LIKE "%' + searchterm + '%" OR \
+                description_short, packagelink, category, version FROM '\
+                 + self._pkgtable + ' WHERE name LIKE "%' + searchterm + '%" OR \
                 description_short LIKE "%' + searchterm + '%"')
         for row in curs.fetchall():
             if install:
                 self.install(row[1], row[7])
+            elif remove:
+                self.remove(row[1])
             else: self.printPackage(self._color, row)
         conn.commit()
         curs.close()
         if install: self.startInstallation(row[0], row[1], row[9])
+        elif remove: self.startRemove(row[0], row[1], row[9])
 
     def getAllPackages(self):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         conn.text_factory = str
         curs = conn.cursor()
         curs.execute('SELECT id, name, homepage, developer, dependency, source,\
-                description_short, packagelink, category, version FROM \
-                packages')
+                description_short, packagelink, category, version FROM '\
+                + self._pkgtable)
         for row in curs.fetchall():
             self.printPackageShort(self._color, row)
         conn.commit()

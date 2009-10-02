@@ -21,37 +21,41 @@ import sys
 import sqlite3
 from subprocess import call
 import OPKG
+import Config
 
 class OPKGUpgrade:
     def __init__(self):
         self.installstr = ""
-        pass
+        config = Config.Config()
+        self._dbfile = config.getDbfile()
+        self._pkgtable = config.getPkgtable()
+        self._installtable = config.getInstalltable()
 
     def setInstalled(self, id, name, version):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         curs = conn.cursor()
         try:
-            curs.execute('INSERT INTO installed VALUES(?, ?, ?)', (id, name, version))
+            curs.execute('INSERT INTO ' + self._installtable + ' VALUES(?, ?, ?)', (id, name, version))
         except Exception, e:
             print >> sys.stderr, "Coudn't save entry " + name + " to the database! ERROR: ", e
         conn.commit()
         curs.close()
 
     def updateInstalled(self, id, version):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         curs = conn.cursor()
         try:
-            curs.execute('UPDATE installed SET version=? WHERE id=?', (version, id))
+            curs.execute('UPDATE ' + self._installtable + ' SET version=? WHERE id=?', (version, id))
         except Exception, e:
             print >> sys.stderr, "Coudn't update entry " + str(id) + "! ERROR: ", e
         conn.commit()
         curs.close()
 
     def upgrade(self):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         curs = conn.cursor()
         try:
-            curs.execute('SELECT * FROM installed')
+            curs.execute('SELECT * FROM ' + self._installtable)
         except Exception, e:
             print >> sys.stderr, "Coudn't select entry from the database! ERROR: ", e
         oldpackage = curs.fetchone()
@@ -67,10 +71,11 @@ class OPKGUpgrade:
                 self.updateInstalled(id, version)
 
     def getPackagesInfos(self, id):
-        conn = sqlite3.connect('opkg.db')
+        conn = sqlite3.connect(self._dbfile)
         curs = conn.cursor()
         try:
-            curs.execute('SELECT version, packagelink FROM packages WHERE id=' + str(id))
+            curs.execute('SELECT version, packagelink FROM ' + self._pkgtable \
+            + ' WHERE id=' + str(id))
         except Exception, e:
             print >> sys.stderr, "Coudn't select entry from the database! ERROR: ", e
         return curs.fetchone()

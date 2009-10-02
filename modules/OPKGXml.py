@@ -18,10 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 import socket
+import Config
 
 class OPKGXml:
     def __init__(self):
-        pass
+        config = Config.Config()
+        self._host = config.getHost()
+        self._port = config.getPort()
 
     def getXMLByNumber(self, number):
         command = 'POST /api.php?action=show-package&pid=' + str(number) + ' HTTP/1.1\r\n'
@@ -37,9 +40,9 @@ class OPKGXml:
 
     def getXML(self, postcommand):
         self._soc = socket.socket()
-        self._soc.connect( ('opkg.org', 80) )
+        self._soc.connect( (self._host, self._port) )
         self._soc.send(postcommand)
-        self._soc.send('Host: www.opkg.org\r\n\n')
+        self._soc.send('Host: ' + self._host + '\r\n\n')
 
         data = " "
         buffer = ""
