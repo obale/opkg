@@ -37,7 +37,7 @@ class Config:
         return self.cfgparser.get('opkg.org', 'host')
 
     def getPort(self):
-        return self.cfgparser.get('opkg.org', 'port')
+        return self.cfgparser.getint('opkg.org', 'port')
 
     def getVersion(self):
         return self.cfgparser.get('core', 'version')

@@ -38,21 +38,22 @@ class OPKG:
         self._installstr = ""
         self._installnames = ""
         self._removenames = ""
-        self._id = []
-        self._name = []
-        self._version = []
+        self._dbentry = []
+        self._rmentry = []
         config = Config.Config()
         self._dbfile = config.getDbfile()
         self._pkgtable = config.getPkgtable()
 
-    def install(self, name, packagelink):
+    def install(self, id, name, version, packagelink):
         self._installstr += packagelink + " "
         self._installnames += name + " "
+        self._dbentry.append(  (id, name, version) )
 
-    def remove(self, name):
+    def remove(self, id, name):
         self._removenames += name + " "
+        self._rmentry.append(id)
 
-    def startInstallation(self, id, name, version):
+    def startInstallation(self):
         if self._installstr != "":
             print self._installnames
             answer = 'N'
@@ -60,9 +61,9 @@ class OPKG:
             answer = sys.stdin.read(1)
             if answer == 'y' or answer == 'Y':
                 retvalue = call(['opkg', 'install', self._installstr ])
-                # Installation is finished successfully!
                 if retvalue == 0:
-                    self._opkgupgrade.setInstalled(id, name, version)
+                    for (id, name, version) in self._dbentry:
+                        self._opkgupgrade.setInstalled(id, name, version)
                     print '\033[1;32mInstalled successfully\033[0m'
                 else:
                     print '\033[1;31mInstalled failed\033[0m'
@@ -71,7 +72,7 @@ class OPKG:
         else:
             print "No package found to install!"
 
-    def startRemove(self, id, name, version):
+    def startRemove(self):
         if self._removenames != "":
             print self._removenames
             answer = 'N'
@@ -81,14 +82,15 @@ class OPKG:
                 retvalue = call(['opkg', 'remove', self._removenames])
                 # Deinstallation is finished successfully!
                 if retvalue == 0:
-                    self._opkgdelete.deletePackage(id)
+                    for id in self._rmentry:
+                        self._opkgdelete.deletePackage(id)
                     print '\033[1;32mDeinstallation successfully\033[0m'
                 else:
                     print '\033[1;31mDeinstallation failed\033[0m'
             else:
                 print "Aborted!"
         else:
-            print "No package found to install!"
+            print "No package found to remove!"
 
     def getPackageByNumber(self, number, install, remove):
         conn = sqlite3.connect(self._dbfile)
@@ -99,14 +101,14 @@ class OPKG:
                 self._pkgtable + ' WHERE id=' + str(number))
         for row in curs.fetchall():
             if install:
-                self.install(row[1], row[7])
+                self.install(row[0], row[1], row[9], row[7])
             elif remove:
-                self.remove(row[1])
+                self.remove(row[0], row[1])
             else: self.printPackage(self._color, row)
         conn.commit()
         curs.close()
-        if install: self.startInstallation(row[0], row[1], row[9])
-        elif remove: self.startRemove(row[0], row[1], row[9])
+        if install: self.startInstallation()
+        elif remove: self.startRemove()
 
     def getPackageBySearchterm(self, searchterm, install, remove):
         conn = sqlite3.connect(self._dbfile)
@@ -118,14 +120,14 @@ class OPKG:
                 description_short LIKE "%' + searchterm + '%"')
         for row in curs.fetchall():
             if install:
-                self.install(row[1], row[7])
+                self.install(row[0], row[1], row[9], row[7])
             elif remove:
-                self.remove(row[1])
+                self.remove(row[0], row[1])
             else: self.printPackage(self._color, row)
         conn.commit()
         curs.close()
-        if install: self.startInstallation(row[0], row[1], row[9])
-        elif remove: self.startRemove(row[0], row[1], row[9])
+        if install: self.startInstallation()
+        elif remove: self.startRemove()
 
     def getAllPackages(self):
         conn = sqlite3.connect(self._dbfile)

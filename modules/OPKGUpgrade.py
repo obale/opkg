@@ -37,7 +37,8 @@ class OPKGUpgrade:
         try:
             curs.execute('INSERT INTO ' + self._installtable + ' VALUES(?, ?, ?)', (id, name, version))
         except Exception, e:
-            print >> sys.stderr, "Coudn't save entry " + name + " to the database! ERROR: ", e
+            curs.execute('CREATE TABLE ' + self._installtable + ' (id INTEGER, name VARCHAR, version VARCHAR)')
+            curs.execute('INSERT INTO ' + self._installtable + ' VALUES(?, ?, ?)', (id, name, version))
         conn.commit()
         curs.close()
 
@@ -58,10 +59,10 @@ class OPKGUpgrade:
             curs.execute('SELECT * FROM ' + self._installtable)
         except Exception, e:
             print >> sys.stderr, "Coudn't select entry from the database! ERROR: ", e
-        oldpackage = curs.fetchone()
-        newpackage = self.getPackagesInfos(oldpackage[0])
-        if str(oldpackage[2]) < str(newpackage[0]):
-            self.upgradePackage(oldpackage[0], newpackage[0], newpackage[1])
+        for oldpackage in curs.fetchall():
+            newpackage = self.getPackagesInfos(oldpackage[0])
+            if str(oldpackage[2]) < str(newpackage[0]):
+                self.upgradePackage(oldpackage[0], newpackage[0], newpackage[1])
         conn.commit()
         curs.close()
 
